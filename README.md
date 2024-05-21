@@ -1,1 +1,1 @@
-# tdd-go
+# Test-Driven Development in Go
