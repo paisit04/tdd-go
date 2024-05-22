@@ -14,7 +14,7 @@ type BookOperationsService struct {
 }
 
 // ListByUser provides a mock function with given fields: userID
-func (_m *BookOperationsService) ListByUser(userID string) []db.Book {
+func (_m *BookOperationsService) ListByUser(userID string) ([]db.Book, error) {
 	ret := _m.Called(userID)
 
 	if len(ret) == 0 {
@@ -22,6 +22,10 @@ func (_m *BookOperationsService) ListByUser(userID string) []db.Book {
 	}
 
 	var r0 []db.Book
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]db.Book, error)); ok {
+		return rf(userID)
+	}
 	if rf, ok := ret.Get(0).(func(string) []db.Book); ok {
 		r0 = rf(userID)
 	} else {
@@ -30,7 +34,13 @@ func (_m *BookOperationsService) ListByUser(userID string) []db.Book {
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // NewBookOperationsService creates a new instance of BookOperationsService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

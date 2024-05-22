@@ -11,18 +11,20 @@ import (
 )
 
 func TestGetUser(t *testing.T) {
+	testDB, cleaner := db.OpenDB(t)
+	defer cleaner()
 	t.Run("existing user", func(t *testing.T) {
 		eb := db.Book{
-			Name:    "New book",
+			Name:    "Existing book",
 			OwnerID: uuid.New().String(),
 		}
-		eu := db.User{
-			ID:   uuid.New().String(),
-			Name: "Existing user",
-		}
 		bs := mocks.NewBookOperationsService(t)
-		us := db.NewUserService([]db.User{eu}, bs)
-		bs.On("ListByUser", eu.ID).Return([]db.Book{eb}).Once()
+		us := db.NewUserService(testDB, bs)
+		eu, err := us.Upsert(db.User{
+			Name: "Existing user",
+		})
+		require.Nil(t, err)
+		bs.On("ListByUser", eu.ID).Return([]db.Book{eb}, nil).Once()
 		user, books, err := us.Get(eu.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, eu, *user)
@@ -31,11 +33,7 @@ func TestGetUser(t *testing.T) {
 		bs.AssertExpectations(t)
 	})
 	t.Run("invalid users", func(t *testing.T) {
-		eu := db.User{
-			ID:   uuid.New().String(),
-			Name: "Existing user",
-		}
-		us := db.NewUserService([]db.User{eu}, nil)
+		us := db.NewUserService(testDB, nil)
 		tests := map[string]struct {
 			id      string
 			wantErr string
@@ -52,19 +50,13 @@ func TestGetUser(t *testing.T) {
 			})
 		}
 	})
-
-	t.Run("empty users", func(t *testing.T) {
-		us := db.NewUserService([]db.User{}, nil)
-		user, books, err := us.Get(uuid.New().String())
-		assert.Nil(t, user)
-		assert.Empty(t, books)
-		assert.Contains(t, err.Error(), "no user found")
-	})
 }
 
 func TestUpsertUser(t *testing.T) {
+	testDB, cleaner := db.OpenDB(t)
+	defer cleaner()
 	bs := mocks.NewBookOperationsService(t)
-	us := db.NewUserService([]db.User{}, bs)
+	us := db.NewUserService(testDB, bs)
 	newUser := db.User{
 		Name: "New user",
 	}
@@ -76,24 +68,20 @@ func TestUpsertUser(t *testing.T) {
 }
 
 func TestExistsUser(t *testing.T) {
-	eu := db.User{
-		ID:   uuid.New().String(),
-		Name: "Existing user",
-	}
+	testDB, cleaner := db.OpenDB(t)
+	defer cleaner()
 	bs := mocks.NewBookOperationsService(t)
 	t.Run("existing user", func(t *testing.T) {
-		us := db.NewUserService([]db.User{eu}, bs)
-		err := us.Exists(eu.ID)
+		us := db.NewUserService(testDB, bs)
+		eu, err := us.Upsert(db.User{
+			Name: "Existing user",
+		})
+		require.Nil(t, err)
+		err = us.Exists(eu.ID)
 		require.Nil(t, err)
 	})
 	t.Run("invalid ID user", func(t *testing.T) {
-		us := db.NewUserService([]db.User{eu}, bs)
-		err := us.Exists(uuid.New().String())
-		require.NotNil(t, err)
-		assert.Contains(t, err.Error(), "no user found")
-	})
-	t.Run("empty users", func(t *testing.T) {
-		us := db.NewUserService([]db.User{}, bs)
+		us := db.NewUserService(testDB, bs)
 		err := us.Exists(uuid.New().String())
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "no user found")

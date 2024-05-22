@@ -12,12 +12,12 @@ import (
 
 // Handler contains the handler and all its dependencies.
 type Handler struct {
-	bs *db.BookService
+	bs *db.BookRepository
 	us *db.UserService
 }
 
 // NewHandler initialises a new handler, given dependencies.
-func NewHandler(bs *db.BookService, us *db.UserService) *Handler {
+func NewHandler(bs *db.BookRepository, us *db.UserService) *Handler {
 	return &Handler{
 		bs: bs,
 		us: us,
@@ -26,19 +26,35 @@ func NewHandler(bs *db.BookService, us *db.UserService) *Handler {
 
 // Index is invoked by HTTP GET /.
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
+	books, err := h.bs.List()
+	if err != nil {
+		writeResponse(w, http.StatusInternalServerError, &Response{
+			Error: err.Error(),
+		})
+		return
+	}
+
 	// Send an HTTP status & a hardcoded message
 	resp := &Response{
 		Message: "Welcome to the BookSwap service!",
-		Books:   h.bs.List(),
+		Books:   books,
 	}
 	writeResponse(w, http.StatusOK, resp)
 }
 
 // ListBooks is invoked by HTTP GET /books.
 func (h *Handler) ListBooks(w http.ResponseWriter, r *http.Request) {
+	books, err := h.bs.List()
+	if err != nil {
+		writeResponse(w, http.StatusInternalServerError, &Response{
+			Error: err.Error(),
+		})
+		return
+	}
+
 	// Send an HTTP status & the list of books
 	writeResponse(w, http.StatusOK, &Response{
-		Books: h.bs.List(),
+		Books: books,
 	})
 }
 
